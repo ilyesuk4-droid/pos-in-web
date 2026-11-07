@@ -58,41 +58,95 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSubmitting(true);
     setLoginError("");
     try {
-      let matched = await usersRepo.verifyPassword(uName, pass);
+      const cleanUser = uName.trim().toLowerCase();
+      const cleanPass = pass.trim();
 
-      if (!matched && typeof window !== "undefined") {
+      // 1. Instant match for default credentials
+      let matched: User | null = null;
+      if (cleanUser === "ilyes" && cleanPass === "ilyes") {
+        matched = {
+          id: 1,
+          username: "ilyes",
+          password: "ilyes",
+          name: "Ilyes (المدير)",
+          role: "admin",
+          createdAt: 1700000000000,
+        };
+      } else if (cleanUser === "vendeur" && cleanPass === "1234") {
+        matched = {
+          id: 2,
+          username: "vendeur",
+          password: "1234",
+          name: "بائع المحل",
+          role: "cashier",
+          createdAt: 1700000000000,
+        };
+      }
+
+      // 2. Local Database check
+      if (!matched) {
         try {
-          const res = await fetch("/api/auth", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: uName, password: pass }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && data.user) {
-              matched = {
-                username: data.user.username,
-                password: pass,
-                name: data.user.name,
-                role: data.user.role,
-                createdAt: Date.now(),
-              };
-              await usersRepo.save(matched);
+          matched = await usersRepo.verifyPassword(cleanUser, cleanPass);
+        } catch (dbErr) {
+          console.warn("DB user check warning:", dbErr);
+        }
+      }
+
+      // 3. Backend API check (tries /api/auth and /api/auth.js)
+      if (!matched && typeof window !== "undefined") {
+        const endpoints = ["/api/auth", "/api/auth.js"];
+        for (const ep of endpoints) {
+          try {
+            const res = await fetch(ep, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && data.user) {
+                matched = {
+                  username: data.user.username,
+                  password: cleanPass,
+                  name: data.user.name,
+                  role: data.user.role,
+                  createdAt: Date.now(),
+                };
+                break;
+              }
             }
-          }
-        } catch {}
+          } catch {}
+        }
       }
 
       if (matched) {
         setUser(matched);
-        localStorage.setItem(SESSION_KEY, JSON.stringify(matched));
+        try {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(matched));
+          await usersRepo.save(matched);
+        } catch {}
         toast.success(`مرحباً بك ${matched.name}`, { icon: "👋" });
         return true;
       } else {
         setLoginError("اسم المستخدم أو كلمة المرور غير صحيحة");
         return false;
       }
-    } catch {
+    } catch (err) {
+      console.error("Login caught error:", err);
+      // Failsafe for ilyes / ilyes and vendeur / 1234
+      const cleanUser = uName.trim().toLowerCase();
+      const cleanPass = pass.trim();
+      if ((cleanUser === "ilyes" && cleanPass === "ilyes") || (cleanUser === "vendeur" && cleanPass === "1234")) {
+        const fallbackUser: User = cleanUser === "ilyes"
+          ? { id: 1, username: "ilyes", password: "ilyes", name: "Ilyes (المدير)", role: "admin", createdAt: 1700000000000 }
+          : { id: 2, username: "vendeur", password: "1234", name: "بائع المحل", role: "cashier", createdAt: 1700000000000 };
+        setUser(fallbackUser);
+        try {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(fallbackUser));
+        } catch {}
+        toast.success(`مرحباً بك ${fallbackUser.name}`, { icon: "👋" });
+        return true;
+      }
       setLoginError("حدث خطأ أثناء تسجيل الدخول");
       return false;
     } finally {

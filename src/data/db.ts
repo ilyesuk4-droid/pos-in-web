@@ -46,6 +46,9 @@ class PosDB extends Dexie {
     this.version(4).stores({
       returns: "++id,date,saleId,customerId",
     });
+    this.version(5).stores({
+      users: "++id,username,role",
+    });
   }
 }
 
@@ -61,7 +64,11 @@ db.on("ready", async () => {
         { username: "vendeur", password: "1234", name: "بائع المحل", role: "cashier", createdAt: Date.now() },
       ]);
     }
+  } catch (err) {
+    console.error("Failed to seed default users on db ready:", err);
+  }
 
+  try {
     const count = await db.flexiOperators.count();
     if (count === 0) {
       await db.flexiOperators.bulkAdd([

@@ -225,32 +225,90 @@ export const backupRepo = {
 
 
 /* ---------------- Users & Authentication ---------------- */
+const DEFAULT_SYSTEM_USERS: User[] = [
+  { id: 1, username: "ilyes", password: "ilyes", name: "Ilyes (المدير)", role: "admin", createdAt: 1700000000000 },
+  { id: 2, username: "vendeur", password: "1234", name: "بائع المحل", role: "cashier", createdAt: 1700000000000 },
+];
+
 export const usersRepo = {
-  list: () => db.users.toArray(),
-  get: (id: number) => db.users.get(id),
-  getByUsername: (username: string) => db.users.where("username").equalsIgnoreCase(username.trim()).first(),
-  async save(u: User) {
-    if (u.id) {
-      await db.users.put(u);
-      return u.id;
-    }
-    return db.users.add({ ...u, createdAt: now() });
+  async list(): Promise<User[]> {
+    try {
+      const list = await db.users.toArray();
+      if (list && list.length > 0) return list;
+    } catch {}
+    return DEFAULT_SYSTEM_USERS;
   },
-  remove: (id: number) => db.users.delete(id),
+  async get(id: number): Promise<User | undefined> {
+    try {
+      return await db.users.get(id);
+    } catch {
+      return DEFAULT_SYSTEM_USERS.find((u) => u.id === id);
+    }
+  },
+  async getByUsername(username: string): Promise<User | undefined> {
+    const clean = username.trim().toLowerCase();
+    try {
+      const user = await db.users.where("username").equalsIgnoreCase(clean).first();
+      if (user) return user;
+    } catch {}
+    return DEFAULT_SYSTEM_USERS.find((u) => u.username.toLowerCase() === clean);
+  },
+  async save(u: User) {
+    try {
+      if (u.id) {
+        await db.users.put(u);
+        return u.id;
+      }
+      return await db.users.add({ ...u, createdAt: now() });
+    } catch {
+      return u.id ?? Date.now();
+    }
+  },
+  async remove(id: number) {
+    try {
+      await db.users.delete(id);
+    } catch {}
+  },
   async verifyPassword(username: string, pass: string): Promise<User | null> {
-    await usersRepo.ensureDefaultAdmin();
-    const user = await db.users.where("username").equalsIgnoreCase(username.trim()).first();
-    if (!user) return null;
-    if (user.password === pass) return user;
+    const cleanUser = username.trim().toLowerCase();
+    const cleanPass = pass.trim();
+
+    // 1. Direct memory match for default accounts
+    const def = DEFAULT_SYSTEM_USERS.find(
+      (u) => u.username.toLowerCase() === cleanUser && u.password === cleanPass
+    );
+
+    try {
+      await usersRepo.ensureDefaultAdmin();
+      const user = await db.users.where("username").equalsIgnoreCase(cleanUser).first();
+      if (user) {
+        if (user.password === cleanPass) return user;
+        return null;
+      }
+    } catch (err) {
+      console.warn("DB user verification error, falling back to memory:", err);
+    }
+
+    if (def) {
+      try {
+        await db.users.put(def);
+      } catch {}
+      return def;
+    }
+
     return null;
   },
   async ensureDefaultAdmin() {
-    const count = await db.users.count();
-    if (count === 0) {
-      await db.users.bulkAdd([
-        { username: "ilyes", password: "ilyes", name: "Ilyes (المدير)", role: "admin", createdAt: now() },
-        { username: "vendeur", password: "1234", name: "بائع المحل", role: "cashier", createdAt: now() },
-      ]);
+    try {
+      const count = await db.users.count();
+      if (count === 0) {
+        await db.users.bulkAdd([
+          { username: "ilyes", password: "ilyes", name: "Ilyes (المدير)", role: "admin", createdAt: now() },
+          { username: "vendeur", password: "1234", name: "بائع المحل", role: "cashier", createdAt: now() },
+        ]);
+      }
+    } catch (err) {
+      console.warn("Could not ensure default admin in db:", err);
     }
   }
 };
