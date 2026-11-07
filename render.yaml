@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: mobile-shop-pos
+    runtime: static
+    buildCommand: npm install && npm run build:static
+    staticPublishPath: ./dist/client
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

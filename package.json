@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "build:static": "vite build && node scripts/generate-html.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "electron:dev": "vite build && node scripts/generate-html.mjs && electron .",
