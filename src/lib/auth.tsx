@@ -169,7 +169,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isCashier = user?.role === "cashier";
 
   const isRemoteScanner =
-    typeof window !== "undefined" && window.location.pathname.startsWith("/remote-scanner");
+    typeof window !== "undefined" &&
+    (window.location.pathname.includes("remote-scanner") ||
+      window.location.hash.includes("remote-scanner"));
 
   if (loading) {
     return (

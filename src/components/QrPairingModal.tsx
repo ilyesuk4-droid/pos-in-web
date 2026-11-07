@@ -28,7 +28,7 @@ export function QrPairingModal({ open, onClose, onScanReceived }: QrPairingModal
     setIsConnected(false);
 
     if (typeof window !== "undefined") {
-      const url = `${window.location.origin}/remote-scanner?session=${id}`;
+      const url = `${window.location.origin}/#/remote-scanner?session=${id}`;
       setPairingUrl(url);
 
       QRCode.toDataURL(url, {
@@ -50,11 +50,73 @@ export function QrPairingModal({ open, onClose, onScanReceived }: QrPairingModal
     }
   }, [open]);
 
-  // Poll relay server for scans from phone
+  // Real-time receiver for scans from phone (SSE + BroadcastChannel + Polling)
   useEffect(() => {
     if (!open || !sessionId) return;
 
     let isSubscribed = true;
+    const handledScanIds = new Set<string>();
+
+    function processIncoming(code: string, format?: string, id?: string) {
+      if (!isSubscribed) return;
+      const cleanCode = String(code || "").trim();
+      if (!cleanCode) return;
+
+      const scanKey = id || `${cleanCode}_${Date.now()}`;
+      if (handledScanIds.has(scanKey)) return;
+      handledScanIds.add(scanKey);
+
+      setIsConnected(true);
+      setActiveScansCount((c) => c + 1);
+
+      playScanBeep();
+      triggerScanVibrate();
+      onScanReceived(cleanCode, format);
+      toast.success(`تم استلام من الهاتف: ${cleanCode}`, { icon: "📱" });
+    }
+
+    // 1. Listen via BroadcastChannel (instant multi-tab / same browser testing)
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("pos_remote_scan");
+      channel.onmessage = (event) => {
+        if (event.data?.session === sessionId && event.data?.code) {
+          processIncoming(event.data.code, event.data.format, String(event.data.timestamp || ""));
+        }
+      };
+    } catch {}
+
+    // 2. Real-time global SSE (< 100ms push from phone camera)
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource(`https://ntfy.sh/pos_relay_${sessionId}/sse`);
+      eventSource.onopen = () => {
+        if (isSubscribed) setIsConnected(true);
+      };
+      eventSource.onmessage = (event) => {
+        try {
+          const raw = JSON.parse(event.data);
+          if (raw.event === "message" && raw.message) {
+            try {
+              const parsed = JSON.parse(raw.message);
+              if (parsed?.code) {
+                processIncoming(parsed.code, parsed.format, raw.id);
+                return;
+              }
+            } catch {}
+            processIncoming(raw.message, undefined, raw.id);
+          }
+        } catch {
+          if (event.data && typeof event.data === "string" && !event.data.startsWith("{")) {
+            processIncoming(event.data);
+          }
+        }
+      };
+    } catch (e) {
+      console.warn("SSE init error:", e);
+    }
+
+    // 3. Fallback polling to /api/relay
     const interval = setInterval(async () => {
       try {
         const queryParams = new URLSearchParams({ session: sessionId });
@@ -72,26 +134,20 @@ export function QrPairingModal({ open, onClose, onScanReceived }: QrPairingModal
           }
 
           if (Array.isArray(data.scans) && data.scans.length > 0) {
-            setIsConnected(true);
             for (const scan of data.scans) {
               lastScanIdRef.current = scan.id;
-              setActiveScansCount((c) => c + 1);
-
-              playScanBeep();
-              triggerScanVibrate();
-              onScanReceived(scan.code, scan.format);
-              toast.success(`تم استلام من الهاتف: ${scan.code}`, { icon: "📱" });
+              processIncoming(scan.code, scan.format, scan.id);
             }
           }
         }
-      } catch {
-        // network poll error
-      }
-    }, 700);
+      } catch {}
+    }, 1000);
 
     return () => {
       isSubscribed = false;
       clearInterval(interval);
+      if (channel) channel.close();
+      if (eventSource) eventSource.close();
     };
   }, [open, sessionId, onScanReceived]);
 

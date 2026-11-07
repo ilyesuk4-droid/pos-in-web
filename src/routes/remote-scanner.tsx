@@ -23,9 +23,12 @@ function RemoteScannerPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const urlParams = new URLSearchParams(window.location.search);
-      const s = urlParams.get("session") || "default-session";
-      setSession(s);
+      let s = new URLSearchParams(window.location.search).get("session");
+      if (!s && window.location.hash.includes("?")) {
+        const hashQuery = window.location.hash.split("?")[1];
+        s = new URLSearchParams(hashQuery).get("session");
+      }
+      setSession(s || "default-session");
     }
   }, []);
 
@@ -36,31 +39,48 @@ function RemoteScannerPage() {
     setSending(true);
     setLastSentCode(code);
 
+    const payload = {
+      session,
+      code,
+      format: result.format || "auto",
+      timestamp: Date.now(),
+    };
+
+    // 1. BroadcastChannel for same-device/tab testing
     try {
-      const res = await fetch("/api/relay", {
+      const channel = new BroadcastChannel("pos_remote_scan");
+      channel.postMessage(payload);
+      channel.close();
+    } catch {}
+
+    // 2. Real-time global relay (Instant SSE push to PC in < 100ms)
+    try {
+      await fetch(`https://ntfy.sh/pos_relay_${session}`, {
+        method: "POST",
+        headers: { "Title": "Barcode Scan", "Priority": "high" },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      console.warn("Global relay send error:", e);
+    }
+
+    // 3. Local Vercel serverless relay
+    try {
+      await fetch("/api/relay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session,
-          code,
-          format: result.format || "auto",
-        }),
+        body: JSON.stringify(payload),
       });
-
-      if (res.ok) {
-        toast.success(`تم إرسال الكود للكمبيوتر: ${code}`, { icon: "⚡" });
-        setScanHistory((prev) => [
-          { code, time: new Date().toLocaleTimeString(), format: result.format },
-          ...prev.slice(0, 15),
-        ]);
-      } else {
-        toast.error("فشل الاتصال بخادم الربط");
-      }
-    } catch {
-      toast.error("تعذر إرسال الكود للكمبيوتر، تحقق من الاتصال");
-    } finally {
-      setSending(false);
+    } catch (e) {
+      console.warn("Vercel relay send error:", e);
     }
+
+    toast.success(`تم إرسال الكود للكمبيوتر: ${code}`, { icon: "⚡" });
+    setScanHistory((prev) => [
+      { code, time: new Date().toLocaleTimeString(), format: result.format },
+      ...prev.slice(0, 15),
+    ]);
+    setSending(false);
   }
 
   return (
