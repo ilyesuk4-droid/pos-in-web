@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import {
   LayoutDashboard, ShoppingCart, Package, Tags, Users, Truck, History, BarChart3,
   Wallet, Barcode, Settings as Cog, DatabaseBackup, Smartphone, AlertTriangle,
-  Wrench, Zap, ChevronLeft, ChevronRight, Download, X, RotateCcw, Code2,
+  Wrench, Zap, ChevronLeft, ChevronRight, Download, X, RotateCcw, Code2, ClipboardCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { backupRepo, settingsRepo, useData } from "@/data";
@@ -43,6 +43,7 @@ const navSections: NavSection[] = [
       { to: "/products", key: "products", icon: Package },
       { to: "/categories", key: "categories", icon: Tags },
       { to: "/purchases", key: "purchases", icon: Truck },
+      { to: "/inventory-count", key: "inventoryCount", icon: ClipboardCheck },
       { to: "/movements", key: "movements", icon: History },
       { to: "/labels", key: "labels", icon: Barcode },
     ],

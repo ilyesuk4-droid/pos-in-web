@@ -67,9 +67,9 @@ export function Table({ head, children }: { head: ReactNode[]; children: ReactNo
   );
 }
 export const Td = ({ children, className, colSpan }: { children?: ReactNode; className?: string; colSpan?: number }) => <td colSpan={colSpan} className={cn("px-3 py-2.5", className)}>{children}</td>;
-export function Badge({ children, tone = "default" }: { children: ReactNode; tone?: "default" | "success" | "warning" | "danger" | "info" }) {
+export function Badge({ children, tone = "default", className }: { children: ReactNode; tone?: "default" | "success" | "warning" | "danger" | "info"; className?: string }) {
   const c = { default: "bg-muted text-foreground", info: "bg-primary/15 text-primary", success: "bg-success/15 text-success", warning: "bg-warning/25 text-warning-foreground", danger: "bg-destructive/10 text-destructive" }[tone];
-  return <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold", c)}>{children}</span>;
+  return <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold", c, className)}>{children}</span>;
 }
 
 export function readFileAsDataURL(file: File, maxSize = 400): Promise<string> {

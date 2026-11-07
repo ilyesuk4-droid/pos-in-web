@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  HelpCircle, Keyboard, Minus, Plus, RotateCcw, ScanLine, Trash2, UserPlus, Zap, X,
+  HelpCircle, Keyboard, Minus, Plus, RotateCcw, ScanLine, Trash2, UserPlus, Zap, X, Camera, AlertTriangle, Check
 } from "lucide-react";
+import { CameraScannerModal, type ScanResult } from "@/components/CameraScanner";
 import { toast } from "sonner";
 import {
   customersRepo, flexiRepo, productsRepo, salesRepo, settingsRepo, useData,
@@ -50,7 +51,63 @@ function POS() {
   const [flexiModal, setFlexiModal] = useState(false);
   const [returnModal, setReturnModal] = useState(false);
   const [shortcutsHelp, setShortcutsHelp] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [unknownBarcode, setUnknownBarcode] = useState<string | null>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddBarcode, setQuickAddBarcode] = useState("");
+  const [quickName, setQuickName] = useState("");
+  const [quickPrice, setQuickPrice] = useState<number | "">("");
+  const [quickCost, setQuickCost] = useState<number | "">("");
+  const [quickStock, setQuickStock] = useState<number | "">(10);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleCameraScan(res: ScanResult) {
+    const code = res.code.trim();
+    if (!code) return;
+    const p = await productsRepo.getByBarcode(code);
+    if (p) {
+      add(p);
+      toast.success(`${p.name} (+1)`, { icon: "🛒" });
+    } else {
+      toast.error(`${t("unknownBarcode")}: ${code}`);
+      setUnknownBarcode(code);
+    }
+  }
+
+  async function handleQuickAddSave() {
+    if (!quickName.trim()) {
+      toast.error(t("name") + " مطلوب");
+      return;
+    }
+    const retailPrice = Number(quickPrice) || 0;
+    const purchasePrice = Number(quickCost) || 0;
+    const stock = Number(quickStock) || 0;
+
+    const id = await productsRepo.save({
+      name: quickName.trim(),
+      barcode: quickAddBarcode,
+      brand: "",
+      purchasePrice,
+      retailPrice,
+      wholesalePrice: retailPrice,
+      stock,
+      minStock: 2,
+      notes: "",
+      createdAt: Date.now(),
+    });
+
+    const created = await productsRepo.get(id);
+    if (created) {
+      add(created);
+      toast.success(`${created.name} (${t("saved")})`);
+    }
+    setQuickAddOpen(false);
+    setQuickAddBarcode("");
+    setQuickName("");
+    setQuickPrice("");
+    setQuickCost("");
+    setQuickStock(10);
+  }
 
   const subtotal = cart.reduce((s, l) => s + l.qty * l.unitPrice, 0);
   const total = Math.max(0, subtotal - discount);
@@ -196,22 +253,23 @@ function POS() {
       <div className="flex min-h-0 flex-col gap-4">
         {/* Search & Action bar */}
         <div className="flex flex-col gap-2">
-          <div className="relative">
-            <ScanLine className="pointer-events-none absolute start-4 top-1/2 h-6 w-6 -translate-y-1/2 text-primary" />
-            <Input
-              ref={inputRef}
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("scanHint")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void onEnter();
-                }
-              }}
-              className="h-16 ps-14 text-xl"
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <ScanLine className="pointer-events-none absolute start-4 top-1/2 h-6 w-6 -translate-y-1/2 text-primary" />
+              <Input
+                ref={inputRef}
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("scanHint")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void onEnter();
+                  }
+                }}
+                className="h-16 ps-14 text-xl"
+              />
             {suggestions.length > 0 && (
               <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
                 {suggestions.map((p) => (
@@ -230,6 +288,18 @@ function POS() {
                 ))}
               </div>
             )}
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCameraOpen(true)}
+              className="h-16 px-4 gap-2 shrink-0 rounded-xl"
+              title={t("scanWithCamera")}
+            >
+              <Camera className="h-6 w-6 text-primary" />
+              <span className="hidden md:inline font-bold">{t("scanWithCamera")}</span>
+            </Button>
           </div>
 
           <div className="flex items-center justify-between">
@@ -485,6 +555,148 @@ function POS() {
         onClose={() => setShortcutsHelp(false)}
         t={t}
       />
+
+      {/* Camera Barcode Scanner Modal */}
+      <CameraScannerModal
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        title={t("scanWithCamera")}
+        subtitle="امسح الباركود لإضافته للسلة فوراً"
+        continuous
+        onScan={handleCameraScan}
+      />
+
+      {/* Unknown Barcode Dialog */}
+      <Modal
+        open={!!unknownBarcode}
+        onClose={() => setUnknownBarcode(null)}
+        title={t("unknownBarcode")}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 rounded-xl border border-warning/40 bg-warning/10 p-3.5 text-warning-foreground">
+            <AlertTriangle className="h-6 w-6 shrink-0 text-warning" />
+            <div>
+              <div className="font-bold">{t("unknownBarcode")}</div>
+              <div className="font-mono text-xs">{unknownBarcode}</div>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">{t("unknownBarcodeDesc")}</p>
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="outline" onClick={() => setUnknownBarcode(null)}>
+              {t("cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              className="gap-1.5"
+              onClick={() => {
+                const code = unknownBarcode!;
+                setUnknownBarcode(null);
+                setQuickAddBarcode(code);
+                setQuickAddOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              <span>{t("addProductWithBarcode")}</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Quick Add Product Modal */}
+      <Modal
+        open={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        title={t("quickAddProduct")}
+      >
+        <div className="space-y-4">
+          <div className="text-xs text-muted-foreground flex items-center justify-between border-b border-border pb-2">
+            <span>{t("barcode")}:</span>
+            <span className="font-mono font-bold text-foreground">{quickAddBarcode}</span>
+          </div>
+
+          <Field label={t("name")}>
+            <Input
+              autoFocus
+              value={quickName}
+              onChange={(e) => setQuickName(e.target.value)}
+              placeholder="مثال: شاحن سريع 20W"
+            />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("retailPrice")}>
+              <Input
+                type="number"
+                value={quickPrice}
+                onChange={(e) => setQuickPrice(e.target.value ? Number(e.target.value) : "")}
+              />
+            </Field>
+            <Field label={t("purchasePrice")}>
+              <Input
+                type="number"
+                value={quickCost}
+                onChange={(e) => setQuickCost(e.target.value ? Number(e.target.value) : "")}
+              />
+            </Field>
+          </div>
+
+          <Field label={t("stock")}>
+            <Input
+              type="number"
+              value={quickStock}
+              onChange={(e) => setQuickStock(e.target.value ? Number(e.target.value) : "")}
+            />
+          </Field>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="outline" onClick={() => setQuickAddOpen(false)}>
+              {t("cancel")}
+            </Button>
+            <Button variant="success" onClick={handleQuickAddSave} className="gap-1.5">
+              <Check className="h-4 w-4" />
+              <span>{t("save")}</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mobile Sticky Bar for Checkout */}
+      <div className="fixed bottom-0 inset-x-0 z-30 flex items-center justify-between border-t border-border bg-card/95 p-3 backdrop-blur-md xl:hidden shadow-lg">
+        <div>
+          <div className="text-xs text-muted-foreground">{t("total")}</div>
+          <div className="font-display text-xl font-extrabold text-primary tabular-nums">{money(total)}</div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setCameraOpen(true)}
+          >
+            <Camera className="h-4 w-4 text-primary" />
+            <span className="hidden sm:inline">{t("scanWithCamera")}</span>
+          </Button>
+          <Button
+            variant="success"
+            size="sm"
+            className="px-5 font-bold shadow-md"
+            disabled={!cart.length}
+            onClick={checkout}
+          >
+            {t("checkout")}
+          </Button>
+        </div>
+      </div>
+
+      {/* Floating Camera Button (Mobile FAB) */}
+      <button
+        type="button"
+        onClick={() => setCameraOpen(true)}
+        className="fixed bottom-20 end-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl hover:scale-105 active:scale-95 transition-all xl:hidden"
+        title={t("scanWithCamera")}
+      >
+        <Camera className="h-6 w-6" />
+      </button>
     </div>
   );
 }

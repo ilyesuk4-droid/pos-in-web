@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import {
   AlertCircle, AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Package,
-  PackageOpen, Pencil, Plus, Trash2, Upload, Sparkles,
+  PackageOpen, Pencil, Plus, Trash2, Upload, Sparkles, Camera
 } from "lucide-react";
+import { CameraScannerModal } from "@/components/CameraScanner";
 import { toast } from "sonner";
 import { categoriesRepo, productsRepo, useData, type Product } from "@/data";
 import { useI18n } from "@/lib/i18n";
@@ -62,6 +63,7 @@ function Products() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [adjusting, setAdjusting] = useState<Product | null>(null);
   const [importRows, setImportRows] = useState<ImportRow[] | null>(null);
+  const [listScannerOpen, setListScannerOpen] = useState(false);
   const [duplicateConflict, setDuplicateConflict] = useState<{
     existing: Product;
     pendingProduct: Product;
@@ -334,12 +336,24 @@ function Products() {
       ) : (
         <>
           <div className="mb-4 flex flex-wrap gap-3">
-            <Input
-              className="max-w-sm"
-              placeholder={t("search")}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
+            <div className="flex flex-1 max-w-sm gap-2">
+              <Input
+                className="flex-1"
+                placeholder={t("search")}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                title={t("scanWithCamera")}
+                onClick={() => setListScannerOpen(true)}
+              >
+                <Camera className="h-4 w-4 text-primary" />
+              </Button>
+            </div>
             <Select
               className="max-w-xs"
               value={cat}
@@ -486,6 +500,19 @@ function Products() {
           onConfirm={confirmImport}
         />
       )}
+
+      {/* List Barcode Scanner Modal */}
+      <CameraScannerModal
+        open={listScannerOpen}
+        onClose={() => setListScannerOpen(false)}
+        title={t("search")}
+        continuous={false}
+        onScan={(res) => {
+          setQ(res.code);
+          setListScannerOpen(false);
+          toast.success(`${t("search")}: ${res.code}`);
+        }}
+      />
     </>
   );
 }
@@ -502,6 +529,7 @@ function ProductForm({
   const { t } = useI18n();
   const categories = useData(() => categoriesRepo.list(), []) ?? [];
   const [p, setP] = useState<Product>(product);
+  const [formScannerOpen, setFormScannerOpen] = useState(false);
   const set = <K extends keyof Product>(k: K, v: Product[K]) =>
     setP((x) => ({ ...x, [k]: v }));
   const num = (k: keyof Product) => ({
@@ -529,11 +557,23 @@ function ProductForm({
           />
         </Field>
         <Field label={t("barcode")}>
-          <Input
-            value={p.barcode}
-            placeholder="مسح أو إدخال يدوي"
-            onChange={(e) => set("barcode", e.target.value)}
-          />
+          <div className="flex gap-2">
+            <Input
+              value={p.barcode}
+              placeholder="مسح أو إدخال يدوي"
+              onChange={(e) => set("barcode", e.target.value)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              title={t("scanWithCamera")}
+              onClick={() => setFormScannerOpen(true)}
+            >
+              <Camera className="h-4 w-4 text-primary" />
+            </Button>
+          </div>
         </Field>
         <Field label={t("brand")}>
           <Input
@@ -614,6 +654,18 @@ function ProductForm({
           <Button type="submit">{t("save")}</Button>
         </div>
       </form>
+
+      <CameraScannerModal
+        open={formScannerOpen}
+        onClose={() => setFormScannerOpen(false)}
+        title={t("scanWithCamera")}
+        continuous={false}
+        onScan={(res) => {
+          set("barcode", res.code);
+          setFormScannerOpen(false);
+          toast.success(`${t("barcode")}: ${res.code}`);
+        }}
+      />
     </Modal>
   );
 }

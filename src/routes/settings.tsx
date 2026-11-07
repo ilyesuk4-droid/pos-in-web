@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Sparkles, Trash2, Wand2, Info, ExternalLink, Instagram,
-  Printer, HardDrive, FolderOpen, Monitor, RefreshCw
+  Printer, HardDrive, FolderOpen, Monitor, RefreshCw, Camera
 } from "lucide-react";
+import { CameraScannerModal } from "@/components/CameraScanner";
 import { toast } from "sonner";
 import pkg from "../../package.json";
 import { backupRepo, demoRepo, settingsRepo, useData, type Settings } from "@/data";
@@ -30,6 +31,8 @@ function SettingsPage() {
   const [hasDemo, setHasDemo] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
+  const [testScannerOpen, setTestScannerOpen] = useState(false);
+  const [scannedTestResult, setScannedTestResult] = useState<{ code: string; format?: string | undefined; time: string } | null>(null);
 
   // Desktop / Electron integration state
   const isElectron = typeof window !== "undefined" && !!window.electronAPI?.isElectron;
@@ -439,6 +442,139 @@ function SettingsPage() {
               </div>
             </Card>
           )}
+
+
+            {/* Camera Barcode Scanner Settings Card */}
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between border-b border-border/70 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Camera className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-base font-bold text-foreground">
+                      {t("cameraScanner")}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {t("cameraScannerDesc")}
+                    </p>
+                  </div>
+                </div>
+                <Badge tone={s.cameraScannerEnabled !== false ? "success" : "default"}>
+                  {s.cameraScannerEnabled !== false ? t("active") : t("disabled")}
+                </Badge>
+              </div>
+
+              {/* Scanner Enable/Disable */}
+              <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                <input
+                  type="checkbox"
+                  id="cameraScannerEnabledToggle"
+                  checked={s.cameraScannerEnabled !== false}
+                  onChange={async (e) => {
+                    const val = e.target.checked;
+                    set("cameraScannerEnabled", val);
+                    await settingsRepo.save({ ...s, cameraScannerEnabled: val });
+                    toast.success(t("saved"));
+                  }}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
+                />
+                <div>
+                  <label htmlFor="cameraScannerEnabledToggle" className="text-sm font-semibold text-foreground cursor-pointer block">
+                    {t("cameraScanner")}
+                  </label>
+                  <span className="text-xs text-muted-foreground">
+                    {t("cameraScannerDesc")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Preferred Camera & Feedback toggles */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={t("cameraFacing")}>
+                  <Select
+                    value={s.preferredCamera || "environment"}
+                    onChange={async (e) => {
+                      const val = e.target.value as "environment" | "user";
+                      set("preferredCamera", val);
+                      await settingsRepo.save({ ...s, preferredCamera: val });
+                      toast.success(t("saved"));
+                    }}
+                  >
+                    <option value="environment">{t("rearCamera")}</option>
+                    <option value="user">{t("frontCamera")}</option>
+                  </Select>
+                </Field>
+
+                <div className="flex flex-col gap-2 justify-center">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="scannerBeepToggle"
+                      checked={s.cameraScannerBeep !== false}
+                      onChange={async (e) => {
+                        const val = e.target.checked;
+                        set("cameraScannerBeep", val);
+                        await settingsRepo.save({ ...s, cameraScannerBeep: val });
+                        toast.success(t("saved"));
+                      }}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
+                    />
+                    <label htmlFor="scannerBeepToggle" className="text-xs font-medium text-foreground cursor-pointer">
+                      {t("scannerBeep")}
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="scannerVibrateToggle"
+                      checked={s.cameraScannerVibrate !== false}
+                      onChange={async (e) => {
+                        const val = e.target.checked;
+                        set("cameraScannerVibrate", val);
+                        await settingsRepo.save({ ...s, cameraScannerVibrate: val });
+                        toast.success(t("saved"));
+                      }}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
+                    />
+                    <label htmlFor="scannerVibrateToggle" className="text-xs font-medium text-foreground cursor-pointer">
+                      {t("scannerVibrate")}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scanner Test Trigger */}
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setTestScannerOpen(true)}
+                  className="w-full gap-2"
+                >
+                  <Camera className="h-4 w-4 text-primary" />
+                  <span>{t("testScanner")}</span>
+                </Button>
+              </div>
+
+              {scannedTestResult && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
+                  <div className="flex justify-between font-semibold">
+                    <span className="text-muted-foreground">{t("lastScanned")}:</span>
+                    <span className="font-mono text-primary text-sm font-bold">{scannedTestResult.code}</span>
+                  </div>
+                  {scannedTestResult.format && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>{t("barcodeFormat")}:</span>
+                      <span className="font-mono">{scannedTestResult.format}</span>
+                    </div>
+                  )}
+                  <div className="text-[10px] text-muted-foreground text-end">{scannedTestResult.time}</div>
+                </div>
+              )}
+            </Card>
+
         </div>
 
         {/* Side panels: About, Demo Data & Wizard */}
@@ -553,6 +689,22 @@ function SettingsPage() {
       </div>
 
       <SetupWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
+
+      <CameraScannerModal
+        open={testScannerOpen}
+        onClose={() => setTestScannerOpen(false)}
+        title={t("testScanner")}
+        subtitle={t("scannerTestDesc")}
+        continuous={false}
+        onScan={(result) => {
+          setScannedTestResult({
+            code: result.code,
+            format: result.format,
+            time: new Date().toLocaleTimeString(),
+          });
+          toast.success(`${t("lastScanned")}: ${result.code}`);
+        }}
+      />
     </>
   );
 }

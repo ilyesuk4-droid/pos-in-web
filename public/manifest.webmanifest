@@ -1,0 +1,19 @@
+{
+  "name": "نظام إدارة متجر الهواتف — Mobile Shop Manager",
+  "short_name": "متجر الهواتف",
+  "description": "نظام نقطة بيع وإدارة مخزون محلي بالكامل لمتاجر الهواتف والإكسسوارات",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as FlexiRouteImport } from './routes/flexi'
+import { Route as InventoryCountRouteImport } from './routes/inventory-count'
 import { Route as LabelsRouteImport } from './routes/labels'
 import { Route as MovementsRouteImport } from './routes/movements'
 import { Route as PosRouteImport } from './routes/pos'
@@ -54,6 +55,11 @@ const ExpensesRoute = ExpensesRouteImport.update({
 const FlexiRoute = FlexiRouteImport.update({
   id: '/flexi',
   path: '/flexi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryCountRoute = InventoryCountRouteImport.update({
+  id: '/inventory-count',
+  path: '/inventory-count',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabelsRoute = LabelsRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
   '/flexi': typeof FlexiRoute
+  '/inventory-count': typeof InventoryCountRoute
   '/labels': typeof LabelsRoute
   '/movements': typeof MovementsRoute
   '/pos': typeof PosRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
   '/flexi': typeof FlexiRoute
+  '/inventory-count': typeof InventoryCountRoute
   '/labels': typeof LabelsRoute
   '/movements': typeof MovementsRoute
   '/pos': typeof PosRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
   '/flexi': typeof FlexiRoute
+  '/inventory-count': typeof InventoryCountRoute
   '/labels': typeof LabelsRoute
   '/movements': typeof MovementsRoute
   '/pos': typeof PosRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/expenses'
     | '/flexi'
+    | '/inventory-count'
     | '/labels'
     | '/movements'
     | '/pos'
@@ -189,6 +199,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/expenses'
     | '/flexi'
+    | '/inventory-count'
     | '/labels'
     | '/movements'
     | '/pos'
@@ -207,6 +218,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/expenses'
     | '/flexi'
+    | '/inventory-count'
     | '/labels'
     | '/movements'
     | '/pos'
@@ -226,6 +238,7 @@ export interface RootRouteChildren {
   CustomersRoute: typeof CustomersRoute
   ExpensesRoute: typeof ExpensesRoute
   FlexiRoute: typeof FlexiRoute
+  InventoryCountRoute: typeof InventoryCountRoute
   LabelsRoute: typeof LabelsRoute
   MovementsRoute: typeof MovementsRoute
   PosRoute: typeof PosRoute
@@ -280,6 +293,13 @@ declare module '@tanstack/react-router' {
       path: '/flexi'
       fullPath: '/flexi'
       preLoaderRoute: typeof FlexiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory-count': {
+      id: '/inventory-count'
+      path: '/inventory-count'
+      fullPath: '/inventory-count'
+      preLoaderRoute: typeof InventoryCountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/labels': {
@@ -362,6 +382,7 @@ const rootRouteChildren: RootRouteChildren = {
   CustomersRoute: CustomersRoute,
   ExpensesRoute: ExpensesRoute,
   FlexiRoute: FlexiRoute,
+  InventoryCountRoute: InventoryCountRoute,
   LabelsRoute: LabelsRoute,
   MovementsRoute: MovementsRoute,
   PosRoute: PosRoute,

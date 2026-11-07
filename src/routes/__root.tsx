@@ -50,10 +50,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Local-first POS and inventory for phone & accessories shops." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "theme-color", content: "#0f172a" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -77,6 +82,15 @@ function RootComponent() {
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.storage?.persist) {
       navigator.storage.persist().catch(() => {});
+    }
+
+    // Register PWA service worker for browser (disabled in Electron)
+    if (
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator &&
+      !window.electronAPI?.isElectron
+    ) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
 
     if (typeof window === "undefined" || !window.electronAPI?.isElectron) return;

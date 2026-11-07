@@ -63,6 +63,10 @@ export interface Settings {
   printerName?: string | undefined;
   autoLaunch?: boolean | undefined;
   backupFolder?: string | undefined;
+  cameraScannerEnabled?: boolean | undefined;
+  preferredCamera?: "environment" | "user" | undefined;
+  cameraScannerBeep?: boolean | undefined;
+  cameraScannerVibrate?: boolean | undefined;
 }
 
 export type RepairStatus = "received" | "in_repair" | "ready" | "delivered" | "cancelled";

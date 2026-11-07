@@ -153,6 +153,7 @@ export const expensesRepo = {
 export const DEFAULT_SETTINGS: Settings = {
   key: "main", shopName: "متجر الهواتف", phone: "", address: "", receiptFooter: "شكراً لزيارتكم",
   paperWidth: 80, language: "ar", hideAmounts: false, darkMode: false, showReceiptCredit: false,
+  cameraScannerEnabled: true, preferredCamera: "environment", cameraScannerBeep: true, cameraScannerVibrate: true,
 };
 export const settingsRepo = {
   async get(): Promise<Settings> { return { ...DEFAULT_SETTINGS, ...(await db.settings.get("main")) }; },

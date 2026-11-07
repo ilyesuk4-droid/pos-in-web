@@ -121,6 +121,18 @@
   input[type="number"] { font-variant-numeric: tabular-nums; }
 }
 
+
+/* ---------- Camera Barcode Scanner Viewfinder ---------- */
+@keyframes scanner-laser-pulse {
+  0% { top: 12%; opacity: 0.85; }
+  50% { top: 88%; opacity: 1; }
+  100% { top: 12%; opacity: 0.85; }
+}
+
+.animate-scanner-laser {
+  animation: scanner-laser-pulse 2s ease-in-out infinite;
+}
+
 /* ---------- Printing ---------- */
 #print-root { display: none; }
 @media print {
