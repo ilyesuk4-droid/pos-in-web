@@ -21,6 +21,7 @@ import { Route as MovementsRouteImport } from './routes/movements'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PurchasesRouteImport } from './routes/purchases'
+import { Route as RemoteScannerRouteImport } from './routes/remote-scanner'
 import { Route as RepairsRouteImport } from './routes/repairs'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ReturnsRouteImport } from './routes/returns'
@@ -87,6 +88,11 @@ const PurchasesRoute = PurchasesRouteImport.update({
   path: '/purchases',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RemoteScannerRoute = RemoteScannerRouteImport.update({
+  id: '/remote-scanner',
+  path: '/remote-scanner',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RepairsRoute = RepairsRouteImport.update({
   id: '/repairs',
   path: '/repairs',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/purchases': typeof PurchasesRoute
+  '/remote-scanner': typeof RemoteScannerRoute
   '/repairs': typeof RepairsRoute
   '/reports': typeof ReportsRoute
   '/returns': typeof ReturnsRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/purchases': typeof PurchasesRoute
+  '/remote-scanner': typeof RemoteScannerRoute
   '/repairs': typeof RepairsRoute
   '/reports': typeof ReportsRoute
   '/returns': typeof ReturnsRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/purchases': typeof PurchasesRoute
+  '/remote-scanner': typeof RemoteScannerRoute
   '/repairs': typeof RepairsRoute
   '/reports': typeof ReportsRoute
   '/returns': typeof ReturnsRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/products'
     | '/purchases'
+    | '/remote-scanner'
     | '/repairs'
     | '/reports'
     | '/returns'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/products'
     | '/purchases'
+    | '/remote-scanner'
     | '/repairs'
     | '/reports'
     | '/returns'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/pos'
     | '/products'
     | '/purchases'
+    | '/remote-scanner'
     | '/repairs'
     | '/reports'
     | '/returns'
@@ -244,6 +256,7 @@ export interface RootRouteChildren {
   PosRoute: typeof PosRoute
   ProductsRoute: typeof ProductsRoute
   PurchasesRoute: typeof PurchasesRoute
+  RemoteScannerRoute: typeof RemoteScannerRoute
   RepairsRoute: typeof RepairsRoute
   ReportsRoute: typeof ReportsRoute
   ReturnsRoute: typeof ReturnsRoute
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PurchasesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/remote-scanner': {
+      id: '/remote-scanner'
+      path: '/remote-scanner'
+      fullPath: '/remote-scanner'
+      preLoaderRoute: typeof RemoteScannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/repairs': {
       id: '/repairs'
       path: '/repairs'
@@ -388,6 +408,7 @@ const rootRouteChildren: RootRouteChildren = {
   PosRoute: PosRoute,
   ProductsRoute: ProductsRoute,
   PurchasesRoute: PurchasesRoute,
+  RemoteScannerRoute: RemoteScannerRoute,
   RepairsRoute: RepairsRoute,
   ReportsRoute: ReportsRoute,
   ReturnsRoute: ReturnsRoute,

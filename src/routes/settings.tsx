@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Sparkles, Trash2, Wand2, Info, ExternalLink, Instagram,
-  Printer, HardDrive, FolderOpen, Monitor, RefreshCw, Camera
+  Printer, HardDrive, FolderOpen, Monitor, RefreshCw, Camera,
+  Users, KeyRound, UserPlus, ShieldAlert, Check
 } from "lucide-react";
 import { CameraScannerModal } from "@/components/CameraScanner";
 import { toast } from "sonner";
 import pkg from "../../package.json";
-import { backupRepo, demoRepo, settingsRepo, useData, type Settings } from "@/data";
+import { backupRepo, demoRepo, settingsRepo, usersRepo, useData, type Settings, type User } from "@/data";
+import { Modal } from "@/components/ui-kit";
 import { useI18n } from "@/lib/i18n";
 import { Button, Card, Field, Input, PageHeader, Select, readFileAsDataURL, Badge } from "@/components/ui-kit";
 import { SetupWizard } from "@/components/SetupWizard";
@@ -33,6 +35,32 @@ function SettingsPage() {
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [testScannerOpen, setTestScannerOpen] = useState(false);
   const [scannedTestResult, setScannedTestResult] = useState<{ code: string; format?: string | undefined; time: string } | null>(null);
+  const users = useData(() => usersRepo.list(), []) ?? [];
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState<"admin" | "cashier">("cashier");
+
+  async function handleSaveUser() {
+    if (!newUsername.trim() || !newPassword.trim()) {
+      toast.error("يرجى إدخال اسم المستخدم وكلمة المرور");
+      return;
+    }
+    await usersRepo.save({
+      username: newUsername.trim(),
+      name: newName.trim() || newUsername.trim(),
+      password: newPassword.trim(),
+      role: newRole,
+      createdAt: Date.now(),
+    });
+    toast.success("تم حفظ حساب المستخدم بنجاح");
+    setUserModalOpen(false);
+    setNewUsername("");
+    setNewName("");
+    setNewPassword("");
+    setNewRole("cashier");
+  }
 
   // Desktop / Electron integration state
   const isElectron = typeof window !== "undefined" && !!window.electronAPI?.isElectron;
@@ -575,6 +603,79 @@ function SettingsPage() {
               )}
             </Card>
 
+            {/* User Accounts & Passwords Card */}
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between border-b border-border/70 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-base font-bold text-foreground">
+                      حسابات المستخدمين وكلمات المرور
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      إدارة صلاحيات الدخول، المدير (Ilyes) وحسابات البائعين
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUserModalOpen(true)}
+                  className="gap-1.5"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>إضافة حساب</span>
+                </Button>
+              </div>
+
+              {/* Users List */}
+              <div className="divide-y divide-border/60 rounded-xl border border-border/60 overflow-hidden bg-muted/20">
+                {users.map((u) => (
+                  <div key={u.id} className="flex items-center justify-between p-3 text-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-8 w-8 place-items-center rounded-lg bg-card border border-border text-base">
+                        {u.role === "admin" ? "👑" : "👤"}
+                      </div>
+                      <div>
+                        <div className="font-bold text-foreground flex items-center gap-1.5">
+                          <span>{u.name}</span>
+                          <span className="font-mono text-muted-foreground text-[11px]">(@{u.username})</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-mono">
+                          كلمة السر: {u.password}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Badge tone={u.role === "admin" ? "info" : "default"}>
+                        {u.role === "admin" ? "مدير المحل (Admin)" : "بائع (Caissier)"}
+                      </Badge>
+
+                      {u.username !== "ilyes" && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm(`هل أنت متأكد من حذف الحساب ${u.username}؟`)) {
+                              await usersRepo.remove(u.id!);
+                              toast.success("تم حذف المستخدم");
+                            }
+                          }}
+                          className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+
         </div>
 
         {/* Side panels: About, Demo Data & Wizard */}
@@ -689,6 +790,61 @@ function SettingsPage() {
       </div>
 
       <SetupWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
+
+      {/* Add New User Account Modal */}
+      <Modal
+        open={userModalOpen}
+        onClose={() => setUserModalOpen(false)}
+        title="إضافة حساب مستخدم جديد"
+      >
+        <div className="space-y-4">
+          <Field label="اسم المستخدم (Username للولوج)">
+            <Input
+              autoFocus
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              placeholder="مثال: ahmed"
+            />
+          </Field>
+
+          <Field label="الاسم الكامل (الظاهر في النظام)">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="مثال: أحمد بائع الصباح"
+            />
+          </Field>
+
+          <Field label="كلمة المرور (Password)">
+            <Input
+              type="text"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="اختر كلمة سر..."
+            />
+          </Field>
+
+          <Field label="نوع الصلاحية">
+            <Select
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value as "admin" | "cashier")}
+            >
+              <option value="cashier">بائع (Caissier - بيع وصيانة فقط بدون أرباح)</option>
+              <option value="admin">مدير المحل (Admin - صلاحيات كاملة)</option>
+            </Select>
+          </Field>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="outline" onClick={() => setUserModalOpen(false)}>
+              إلغاء
+            </Button>
+            <Button variant="primary" onClick={handleSaveUser} className="gap-1.5">
+              <Check className="h-4 w-4" />
+              <span>حفظ الحساب</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <CameraScannerModal
         open={testScannerOpen}

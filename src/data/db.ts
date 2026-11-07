@@ -1,7 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type {
   Category, Customer, CustomerPayment, Expense, FlexiOperator, FlexiRecharge, FlexiSale,
-  Movement, Product, Purchase, RepairTicket, Sale, SaleReturn, Settings, Supplier,
+  Movement, Product, Purchase, RepairTicket, Sale, SaleReturn, Settings, Supplier, User,
 } from "./types";
 
 // Internal to the data layer. UI code must never import this file.
@@ -21,6 +21,7 @@ class PosDB extends Dexie {
   flexiRecharges!: Table<FlexiRecharge, number>;
   flexiSales!: Table<FlexiSale, number>;
   returns!: Table<SaleReturn, number>;
+  users!: Table<User, number>;
 
   constructor() {
     super("phone-shop-pos");
@@ -53,6 +54,14 @@ export const db = new PosDB();
 // Safe initialization on database open, outside of any liveQuery context
 db.on("ready", async () => {
   try {
+    const userCount = await db.users.count();
+    if (userCount === 0) {
+      await db.users.bulkAdd([
+        { username: "ilyes", password: "ilyes", name: "Ilyes (المدير)", role: "admin", createdAt: Date.now() },
+        { username: "vendeur", password: "1234", name: "بائع المحل", role: "cashier", createdAt: Date.now() },
+      ]);
+    }
+
     const count = await db.flexiOperators.count();
     if (count === 0) {
       await db.flexiOperators.bulkAdd([
@@ -69,5 +78,5 @@ db.on("ready", async () => {
 export const ALL_TABLES = [
   "products", "categories", "customers", "customerPayments", "sales",
   "suppliers", "purchases", "movements", "expenses", "settings", "repairs",
-  "flexiOperators", "flexiRecharges", "flexiSales", "returns",
+  "flexiOperators", "flexiRecharges", "flexiSales", "returns", "users",
 ] as const;

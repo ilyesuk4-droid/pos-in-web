@@ -4,7 +4,10 @@ import {
   LayoutDashboard, ShoppingCart, Package, Tags, Users, Truck, History, BarChart3,
   Wallet, Barcode, Settings as Cog, DatabaseBackup, Smartphone, AlertTriangle,
   Wrench, Zap, ChevronLeft, ChevronRight, Download, X, RotateCcw, Code2, ClipboardCheck,
+  QrCode, Lock, User as UserIcon
 } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { QrPairingModal } from "./QrPairingModal";
 import { toast } from "sonner";
 import { backupRepo, settingsRepo, useData } from "@/data";
 import { useI18n, type TKey } from "@/lib/i18n";
@@ -68,6 +71,8 @@ const navSections: NavSection[] = [
 export function AppShell() {
   const { t, lang, setLang } = useI18n();
   const settings = useData(() => settingsRepo.get(), []);
+  const { user, logout, isAdmin } = useAuth();
+  const [qrModalOpen, setQrModalOpen] = useState(false);
 
   // Collapsible sidebar state
   const [collapsed, setCollapsed] = useState(() => {
@@ -259,6 +264,42 @@ export function AppShell() {
 
       {/* Main Content Area */}
       <main className="min-w-0 flex-1 overflow-x-hidden">
+        {/* Top Header with QR Phone pairing & Active User badge */}
+        <header className="flex h-14 items-center justify-between border-b border-border bg-card/60 px-6 backdrop-blur-xs">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setQrModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary shadow-xs transition hover:bg-primary/20"
+              title="ربط الهاتف كقارئ باركود لاسلكي عبر كود QR"
+            >
+              <QrCode className="h-4 w-4" />
+              <Smartphone className="h-4 w-4" />
+              <span className="font-bold">ربط الهاتف (QR)</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Active User Badge */}
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-1 text-xs font-semibold">
+              <span>{isAdmin ? "👑" : "👤"}</span>
+              <span className="font-bold text-foreground">{user?.name || "Ilyes"}</span>
+              <span className="text-[10px] text-muted-foreground font-mono">
+                ({isAdmin ? "مدير" : "بائع"})
+              </span>
+            </div>
+
+            {/* Lock / Logout */}
+            <button
+              type="button"
+              onClick={logout}
+              title="قفل الشاشة / تسجيل الخروج"
+              className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition shadow-xs"
+            >
+              <Lock className="h-4 w-4" />
+            </button>
+          </div>
+        </header>
         {/* Backup reminder banner */}
         {needBackup && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-warning/30 bg-warning/15 px-6 py-2.5 text-sm text-warning-foreground shadow-xs">
@@ -294,6 +335,15 @@ export function AppShell() {
 
       {/* Setup Wizard Modal for first-run */}
       <SetupWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
+
+      {/* QR Code Phone Pairing Modal */}
+      <QrPairingModal
+        open={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        onScanReceived={(code) => {
+          window.dispatchEvent(new CustomEvent("remote-barcode-scanned", { detail: code }));
+        }}
+      />
     </div>
   );
 }

@@ -163,3 +163,15 @@ export interface SaleReturn {
   customerName?: string | undefined;
   notes?: string | undefined;
 }
+
+
+export type UserRole = "admin" | "cashier";
+
+export interface User {
+  id?: number | undefined;
+  username: string;
+  password: string;
+  name: string;
+  role: UserRole;
+  createdAt: number;
+}

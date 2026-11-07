@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  HelpCircle, Keyboard, Minus, Plus, RotateCcw, ScanLine, Trash2, UserPlus, Zap, X, Camera, AlertTriangle, Check
+  HelpCircle, Keyboard, Minus, Plus, RotateCcw, ScanLine, Trash2, UserPlus, Zap, X, Camera, AlertTriangle, Check, QrCode
 } from "lucide-react";
+import { QrPairingModal } from "@/components/QrPairingModal";
 import { CameraScannerModal, type ScanResult } from "@/components/CameraScanner";
 import { toast } from "sonner";
 import {
@@ -52,6 +53,7 @@ function POS() {
   const [returnModal, setReturnModal] = useState(false);
   const [shortcutsHelp, setShortcutsHelp] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [qrPairingOpen, setQrPairingOpen] = useState(false);
   const [unknownBarcode, setUnknownBarcode] = useState<string | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddBarcode, setQuickAddBarcode] = useState("");
@@ -108,6 +110,18 @@ function POS() {
     setQuickCost("");
     setQuickStock(10);
   }
+
+  // Listen to remote barcode scans sent from phone
+  useEffect(() => {
+    const handleRemoteScan = (e: Event) => {
+      const code = (e as CustomEvent).detail;
+      if (typeof code === "string" && code.trim()) {
+        void handleCameraScan({ code: code.trim() });
+      }
+    };
+    window.addEventListener("remote-barcode-scanned", handleRemoteScan);
+    return () => window.removeEventListener("remote-barcode-scanned", handleRemoteScan);
+  }, []);
 
   const subtotal = cart.reduce((s, l) => s + l.qty * l.unitPrice, 0);
   const total = Math.max(0, subtotal - discount);
@@ -299,6 +313,17 @@ function POS() {
             >
               <Camera className="h-6 w-6 text-primary" />
               <span className="hidden md:inline font-bold">{t("scanWithCamera")}</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setQrPairingOpen(true)}
+              className="h-16 px-4 gap-2 shrink-0 rounded-xl border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+              title="ربط الهاتف كقارئ باركود لاسلكي عبر كود QR"
+            >
+              <QrCode className="h-6 w-6" />
+              <span className="hidden lg:inline font-bold">ربط الهاتف (QR)</span>
             </Button>
           </div>
 
@@ -554,6 +579,13 @@ function POS() {
         open={shortcutsHelp}
         onClose={() => setShortcutsHelp(false)}
         t={t}
+      />
+
+      {/* QR Phone Pairing Modal */}
+      <QrPairingModal
+        open={qrPairingOpen}
+        onClose={() => setQrPairingOpen(false)}
+        onScanReceived={(code) => handleCameraScan({ code })}
       />
 
       {/* Camera Barcode Scanner Modal */}

@@ -8,6 +8,7 @@ import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { I18nProvider } from "@/lib/i18n";
 import { PrintProvider } from "@/components/print";
+import { AuthProvider } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
 import { backupRepo } from "@/data";
 
@@ -128,10 +129,12 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ClientOnly fallback={<div className="grid min-h-screen place-items-center text-muted-foreground">…</div>}>
         <I18nProvider>
-          <PrintProvider>
-            <AppShell />
-            <Toaster position="top-center" richColors />
-          </PrintProvider>
+          <AuthProvider>
+            <PrintProvider>
+              <AppShell />
+              <Toaster position="top-center" richColors />
+            </PrintProvider>
+          </AuthProvider>
         </I18nProvider>
       </ClientOnly>
     </QueryClientProvider>

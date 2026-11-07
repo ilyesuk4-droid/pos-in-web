@@ -1,7 +1,7 @@
 import { db, ALL_TABLES } from "./db";
 import { repairsRepo } from "./repairs";
 import type {
-  Category, Customer, Expense, MovementType, PaymentStatus, Product, PurchaseLine, Sale, SaleLine, Settings, Supplier,
+  Category, Customer, Expense, MovementType, PaymentStatus, Product, PurchaseLine, Sale, SaleLine, Settings, Supplier, User,
 } from "./types";
 
 const now = () => Date.now();
@@ -221,4 +221,36 @@ export const backupRepo = {
       }
     });
   },
+};
+
+
+/* ---------------- Users & Authentication ---------------- */
+export const usersRepo = {
+  list: () => db.users.toArray(),
+  get: (id: number) => db.users.get(id),
+  getByUsername: (username: string) => db.users.where("username").equalsIgnoreCase(username.trim()).first(),
+  async save(u: User) {
+    if (u.id) {
+      await db.users.put(u);
+      return u.id;
+    }
+    return db.users.add({ ...u, createdAt: now() });
+  },
+  remove: (id: number) => db.users.delete(id),
+  async verifyPassword(username: string, pass: string): Promise<User | null> {
+    await usersRepo.ensureDefaultAdmin();
+    const user = await db.users.where("username").equalsIgnoreCase(username.trim()).first();
+    if (!user) return null;
+    if (user.password === pass) return user;
+    return null;
+  },
+  async ensureDefaultAdmin() {
+    const count = await db.users.count();
+    if (count === 0) {
+      await db.users.bulkAdd([
+        { username: "ilyes", password: "ilyes", name: "Ilyes (المدير)", role: "admin", createdAt: now() },
+        { username: "vendeur", password: "1234", name: "بائع المحل", role: "cashier", createdAt: now() },
+      ]);
+    }
+  }
 };
